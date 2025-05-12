@@ -2,7 +2,8 @@
 #pip install requests
 #pip install BeautifulSoup
 #Very slow need to figure out how to speed it up....could be that im on wifi
-#No paginating yet, only 6/10 files being downloaded
+#No paginating yet, staying on page 1 for now...
+#Only 6/10 files being downloaded. .pdf files and .zip files
 #Need to work on getting to ex... https://www.gov.nl.ca/iet/mines-geoscience-reports-maps-docs-open-file-nfld-3468/ page for remainding file downloads.
 
 
