@@ -32,11 +32,6 @@ def download_file(session, url, out_dir):
 
 
 def scrape_geofiles(title=None, pdf_only=True, out_dir="pdfs"):
-    """
-    Scrape GeoFiles search results:
-      1. Download PDFs
-      2. Download "Digital Data" ZIPs
-    """
     print("Starting Web Scraper....Please Wait.")
     session = requests.Session()
     session.headers["User-Agent"] = "PDF-Scraper/1.0"
