@@ -21,8 +21,8 @@ DISPLAY_URL     = urljoin(BASE_URL, "display.asp")
 EXTERNAL_PREFIX = "https://www.gov.nl.ca/iet/mines-geoscience-reports-maps-docs"
 
 MAX_RETRIES = 3
-RETRY_DELAY = 2    # seconds between retries
-TIMEOUT     = 15   # seconds for non-form requests
+RETRY_DELAY = 2
+TIMEOUT     = 15
 
 
 def request_with_retry(session, method, url, **kwargs):
@@ -59,7 +59,7 @@ def download_file(session, url, out_dir):
             with session.get(url, stream=True, timeout=None) as resp:
                 resp.raise_for_status()
                 with open(path, "wb") as f:
-                    for chunk in resp.iter_content(chunk_size=8192):
+                    for chunk in resp.iter_content(8192):
                         if chunk:
                             f.write(chunk)
             break
@@ -74,7 +74,7 @@ def download_file(session, url, out_dir):
 def scrape_external(session, external_url, out_dir):
     print(f"Scraping external page: {external_url}")
     resp = request_with_retry(session, 'get', external_url)
-    if resp is None:
+    if not resp:
         return
     soup = BeautifulSoup(resp.text, 'lxml')
     for a in soup.find_all('a', href=True):
@@ -93,16 +93,21 @@ def scrape_geofiles(title=None, out_dir="pdfs"):
 
     # Load search form
     resp = request_with_retry(session, 'get', DEFAULT_URL)
-    if resp is None:
-        print('Failed to load default.asp; aborting.')
+    if not resp:
+        print("Failed to load default.asp; aborting.")
         return
-    soup = BeautifulSoup(resp.text, "lxml")
-    form = soup.find("form", {"name": "SearchForm", "action": "display.asp"})
+    
+    soup = BeautifulSoup(resp.text, 'lxml')
+    search_link = soup.find('a', class_='lg_link_blk', href=re.compile(r'submitForm', re.I))
+    
+    if not search_link:
+        raise RuntimeError("Search link not found on default.asp")
+    form = search_link.find_parent('form')
     if not form:
         raise RuntimeError("Search form not found on default.asp")
 
 
-    # Build payload
+    # Build form payload
     payload = {inp["name"]: inp.get("value", "")
                for inp in form.find_all("input", type=["hidden", "text"]) if inp.get("name")}
     
@@ -135,11 +140,11 @@ def scrape_geofiles(title=None, out_dir="pdfs"):
     
     
     # Total pages
-    last = soup.find('img', {'src': re.compile(r'last\.gif')})
+    last = soup.find('img', src=re.compile(r'last\.gif'))
     total = int(re.search(r'goPage\(\s*(\d+)', last.parent['href']).group(1)) if last else 1
 
 
-    # Page looping
+    # Page loopings
     for page in range(1, total + 1):
         print(f"Page {page}/{total}")
         if page > 1:
@@ -153,7 +158,7 @@ def scrape_geofiles(title=None, out_dir="pdfs"):
             soup = BeautifulSoup(resp.text, "lxml")
 
 
-        # Download PDFs & Follow External Links
+        # Download PDFs and Follow External Links
         for a in soup.find_all("a", href=True):
             href = a["href"]
             full = href if href.lower().startswith("http") else urljoin(BASE_URL, href)
@@ -165,7 +170,7 @@ def scrape_geofiles(title=None, out_dir="pdfs"):
                 scrape_external(session, full, out_dir)
 
 
-        # Download Digital Data ZIPs
+        # Download 'Digital Data' ZIPs
         for a in soup.find_all("a", string=lambda t: t and "Digital Data" in t):
             href = a["href"]
             full = href if href.lower().startswith("http") else urljoin(BASE_URL, href)
@@ -173,6 +178,5 @@ def scrape_geofiles(title=None, out_dir="pdfs"):
 
     print('Finished Downloading. Files saved to', out_dir, "directory.")
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     scrape_geofiles()
